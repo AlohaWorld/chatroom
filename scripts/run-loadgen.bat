@@ -15,7 +15,8 @@ REM   -h | --help          显示帮助
 REM
 REM 说明：
 REM - 先构建：mvn -q -DskipTests package
-REM - 运行时依赖从 tools\target\classpath.txt 读取
+REM - 构建后会生成可执行 jar（tools\target\tools-*.jar）
+REM - 运行依赖会复制到 tools\target\lib
 
 setlocal enabledelayedexpansion
 
@@ -23,15 +24,20 @@ set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%..
 for %%I in ("%PROJECT_ROOT%") do set PROJECT_ROOT=%%~fI
 
-set CLASSPATH_FILE=%PROJECT_ROOT%\tools\target\classpath.txt
-set CLASSES_DIR=%PROJECT_ROOT%\tools\target\classes
+set TARGET_DIR=%PROJECT_ROOT%\tools\target
+set LIB_DIR=%TARGET_DIR%\lib
+set JAR_FILE=
 
-if not exist "%CLASSES_DIR%" (
+if not exist "%TARGET_DIR%" (
   echo [ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package
   exit /b 1
 )
-if not exist "%CLASSPATH_FILE%" (
-  echo [ERROR] 未找到依赖 classpath，请先执行：mvn -q -DskipTests package
+if not exist "%LIB_DIR%" (
+  echo [ERROR] 未找到依赖目录 target\lib，请先执行：mvn -q -DskipTests package
+  exit /b 1
+)
+if not exist "%TARGET_DIR%\tools-*.jar" (
+  echo [ERROR] 未找到可执行 jar，请先执行：mvn -q -DskipTests package
   exit /b 1
 )
 
@@ -61,9 +67,21 @@ more +1 "%~f0"
 exit /b 0
 
 :run
-for /f "usebackq delims=" %%i in ("%CLASSPATH_FILE%") do set DEPS_CP=%%i
-set CP=%CLASSES_DIR%;%DEPS_CP%
+for %%f in ("%TARGET_DIR%\tools-*.jar") do (
+  echo %%~nxf | findstr /I /C:"fault-inject" /C:"-sources.jar" /C:"-javadoc.jar" >nul || (
+    if not defined JAR_FILE set JAR_FILE=%%~ff
+  )
+)
 
-java.exe -cp "%CP%" com.example.chatroom.tools.LoadGenMain ^
+if not defined JAR_FILE (
+  echo [ERROR] 未找到 LoadGen 可执行 jar，请先执行：mvn -q -DskipTests package
+  exit /b 1
+)
+if not exist "%JAR_FILE%" (
+  echo [ERROR] 可执行 jar 路径无效：%JAR_FILE%
+  exit /b 1
+)
+
+java.exe -jar "%JAR_FILE%" ^
   --host %HOST% --port %PORT% --clients %CLIENTS% --msgRate %MSG_RATE% ^
   --durationSec %DURATION% --payloadSize %PAYLOAD%

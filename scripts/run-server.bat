@@ -20,7 +20,8 @@ REM   -h | --help                      显示帮助
 REM
 REM 说明：
 REM - 先构建：mvn -q -DskipTests package
-REM - 运行时依赖从 server\target\classpath.txt 读取
+REM - 构建后会生成可执行 jar（server\target\server-*.jar）
+REM - 运行依赖会复制到 server\target\lib
 
 setlocal enabledelayedexpansion
 
@@ -28,15 +29,35 @@ set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%..
 for %%I in ("%PROJECT_ROOT%") do set PROJECT_ROOT=%%~fI
 
-set CLASSPATH_FILE=%PROJECT_ROOT%\server\target\classpath.txt
-set CLASSES_DIR=%PROJECT_ROOT%\server\target\classes
+set TARGET_DIR=%PROJECT_ROOT%\server\target
+set LIB_DIR=%TARGET_DIR%\lib
+set JAR_FILE=
 
-if not exist "%CLASSES_DIR%" (
+if not exist "%TARGET_DIR%" (
   echo [ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package
   exit /b 1
 )
-if not exist "%CLASSPATH_FILE%" (
-  echo [ERROR] 未找到依赖 classpath，请先执行：mvn -q -DskipTests package
+if not exist "%LIB_DIR%" (
+  echo [ERROR] 未找到依赖目录 target\lib，请先执行：mvn -q -DskipTests package
+  exit /b 1
+)
+if not exist "%TARGET_DIR%\server-*.jar" (
+  echo [ERROR] 未找到可执行 jar，请先执行：mvn -q -DskipTests package
+  exit /b 1
+)
+
+for %%f in ("%TARGET_DIR%\server-*.jar") do (
+  echo %%~nxf | findstr /I /C:"-sources.jar" /C:"-javadoc.jar" >nul || (
+    if not defined JAR_FILE set JAR_FILE=%%~ff
+  )
+)
+
+if not defined JAR_FILE (
+  echo [ERROR] 未找到可执行 jar，请先执行：mvn -q -DskipTests package
+  exit /b 1
+)
+if not exist "%JAR_FILE%" (
+  echo [ERROR] 可执行 jar 路径无效：%JAR_FILE%
   exit /b 1
 )
 
@@ -71,11 +92,7 @@ more +1 "%~f0"
 exit /b 0
 
 :run
-REM 从文件读取依赖 classpath
-for /f "usebackq delims=" %%i in ("%CLASSPATH_FILE%") do set DEPS_CP=%%i
-set CP=%CLASSES_DIR%;%DEPS_CP%
-
 set ARGS=--port %PORT% --mode %MODE% --heartbeatIntervalSec %HEARTBEAT_INTERVAL% --heartbeatMissThreshold %HEARTBEAT_MISS% --maxFrameBytes %MAX_FRAME_BYTES% --backpressureUnwritableThreshold %BACKPRESSURE_THRESHOLD% --bizThreads %BIZ_THREADS%
 if not "%METRICS_PORT%"=="" set ARGS=%ARGS% --metricsPort %METRICS_PORT%
 
-java.exe -cp "%CP%" com.example.chatroom.server.ServerMain %ARGS%
+java.exe -jar "%JAR_FILE%" %ARGS%

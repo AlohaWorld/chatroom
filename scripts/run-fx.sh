@@ -7,22 +7,19 @@
 #
 # 说明：
 # - 先构建：mvn -q -DskipTests package
-# - 运行时依赖从 client-fx/target/classpath.txt 读取
-# - 显式添加 JavaFX 模块，避免模块解析失败
+# - 构建后会生成可执行 jar（client-fx/target/client-fx-*.jar）
+# - 运行依赖会复制到 client-fx/target/lib
 
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-CLASSPATH_FILE="$PROJECT_ROOT/client-fx/target/classpath.txt"
-CLASSES_DIR="$PROJECT_ROOT/client-fx/target/classes"
+JAR_FILE=$(find "$PROJECT_ROOT/client-fx/target" -maxdepth 1 -type f -name 'client-fx-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)
+LIB_DIR="$PROJECT_ROOT/client-fx/target/lib"
 
-if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CLASSPATH_FILE" ]; then
+if [ -z "${JAR_FILE:-}" ] || [ ! -d "$LIB_DIR" ]; then
   echo "[ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package" >&2
   exit 1
 fi
 
-DEPS_CP=$(cat "$CLASSPATH_FILE")
-CP="$CLASSES_DIR:$DEPS_CP"
-
 JAVA_BIN=${JAVA_BIN:-java}
-exec "$JAVA_BIN" -cp "$CP" --add-modules=javafx.controls,javafx.graphics com.example.chatroom.client.fx.ChatFxApp
+exec "$JAVA_BIN" -jar "$JAR_FILE"

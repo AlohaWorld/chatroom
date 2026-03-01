@@ -21,15 +21,16 @@
 #
 # 说明：
 # - 先构建：mvn -q -DskipTests package
-# - 运行时依赖从 server/target/classpath.txt 读取
+# - 构建后会生成可执行 jar（server/target/server-*.jar）
+# - 运行依赖会复制到 server/target/lib
 
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-CLASSPATH_FILE="$PROJECT_ROOT/server/target/classpath.txt"
-CLASSES_DIR="$PROJECT_ROOT/server/target/classes"
+JAR_FILE=$(find "$PROJECT_ROOT/server/target" -maxdepth 1 -type f -name 'server-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)
+LIB_DIR="$PROJECT_ROOT/server/target/lib"
 
-if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CLASSPATH_FILE" ]; then
+if [ -z "${JAR_FILE:-}" ] || [ ! -d "$LIB_DIR" ]; then
   echo "[ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package" >&2
   exit 1
 fi
@@ -56,7 +57,7 @@ while [ $# -gt 0 ]; do
     --metricsPort) METRICS_PORT="$2"; shift 2 ;;
     --bizThreads) BIZ_THREADS="$2"; shift 2 ;;
     -h|--help)
-      sed -n '1,90p' "$0" | sed 's/^# //;s/^#//'
+      sed -n '2,90p' "$0" | sed 's/^# //;s/^#//'
       exit 0
       ;;
     *)
@@ -66,10 +67,6 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# 组装 classpath：工程 classes + 依赖
-DEPS_CP=$(cat "$CLASSPATH_FILE")
-CP="$CLASSES_DIR:$DEPS_CP"
-
 # 组装参数
 ARGS="--port $PORT --mode $MODE --heartbeatIntervalSec $HEARTBEAT_INTERVAL --heartbeatMissThreshold $HEARTBEAT_MISS --maxFrameBytes $MAX_FRAME_BYTES --backpressureUnwritableThreshold $BACKPRESSURE_THRESHOLD --bizThreads $BIZ_THREADS"
 if [ -n "$METRICS_PORT" ]; then
@@ -78,4 +75,4 @@ fi
 
 # 启动
 JAVA_BIN=${JAVA_BIN:-java}
-exec "$JAVA_BIN" -cp "$CP" com.example.chatroom.server.ServerMain $ARGS
+exec "$JAVA_BIN" -jar "$JAR_FILE" $ARGS

@@ -29,7 +29,7 @@ mvn -q -DskipTests package
 ```
 
 ## 一键脚本（推荐）
-说明：脚本会读取各模块 `target/classpath.txt` 作为运行时依赖列表。构建后即可运行。
+说明：所有脚本均使用 `jar` 方式启动。构建后即可运行。
 
 macOS/Linux（sh）：
 ```bash
@@ -67,33 +67,44 @@ REM FaultInject
 scripts\\run-fault-inject.bat --case all
 ```
 
-## 运行：server（不用 Maven，直接 java）
-说明：构建后会生成 `target/classpath.txt`，里面是依赖列表；用 `java -cp` 直接运行。
+## 运行：server（方式A：`java -jar`）
+说明：构建后会生成可执行 jar `server/target/server-1.0-SNAPSHOT.jar`，运行依赖放在 `server/target/lib/`。
 
 macOS/Linux：
 ```bash
 # naive 模式
-java -cp "server/target/classes:$(cat server/target/classpath.txt)" \
-  com.example.chatroom.server.ServerMain \
+java -jar server/target/server-1.0-SNAPSHOT.jar \
   --port 9000 --mode naive --heartbeatIntervalSec 5 --heartbeatMissThreshold 3 --maxFrameBytes 1048576
 
 # backpressure 模式（断开慢客户端阈值可调）
-java -cp "server/target/classes:$(cat server/target/classpath.txt)" \
-  com.example.chatroom.server.ServerMain \
+java -jar server/target/server-1.0-SNAPSHOT.jar \
   --port 9000 --mode backpressure --backpressureUnwritableThreshold 3
 ```
 
 Windows（java.exe）：
 ```bat
 REM naive 模式
-java.exe -cp "server\\target\\classes;@server\\target\\classpath.txt" ^
-  com.example.chatroom.server.ServerMain ^
+java.exe -jar server\\target\\server-1.0-SNAPSHOT.jar ^
   --port 9000 --mode naive --heartbeatIntervalSec 5 --heartbeatMissThreshold 3 --maxFrameBytes 1048576
 
 REM backpressure 模式
+java.exe -jar server\\target\\server-1.0-SNAPSHOT.jar ^
+  --port 9000 --mode backpressure --backpressureUnwritableThreshold 3
+```
+
+## 运行：server（方式B：`java -cp + 主类`）
+macOS/Linux：
+```bash
+java -cp "server/target/classes:$(cat server/target/classpath.txt)" \
+  com.example.chatroom.server.ServerMain \
+  --port 9000 --mode naive --heartbeatIntervalSec 5 --heartbeatMissThreshold 3 --maxFrameBytes 1048576
+```
+
+Windows（java.exe）：
+```bat
 java.exe -cp "server\\target\\classes;@server\\target\\classpath.txt" ^
   com.example.chatroom.server.ServerMain ^
-  --port 9000 --mode backpressure --backpressureUnwritableThreshold 3
+  --port 9000 --mode naive --heartbeatIntervalSec 5 --heartbeatMissThreshold 3 --maxFrameBytes 1048576
 ```
 
 指标端点（默认端口=serverPort+1）：
@@ -101,7 +112,22 @@ java.exe -cp "server\\target\\classes;@server\\target\\classpath.txt" ^
 curl http://127.0.0.1:9001/metrics
 ```
 
-## 运行：CLI 客户端（不用 Maven）
+## 运行：CLI 客户端（方式A：`java -jar`）
+说明：构建后会生成可执行 jar `client-cli/target/client-cli-1.0-SNAPSHOT.jar`，运行依赖放在 `client-cli/target/lib/`。
+
+macOS/Linux：
+```bash
+java -jar client-cli/target/client-cli-1.0-SNAPSHOT.jar \
+  --host 127.0.0.1 --port 9000 --userId alice
+```
+
+Windows（java.exe）：
+```bat
+java.exe -jar client-cli\\target\\client-cli-1.0-SNAPSHOT.jar ^
+  --host 127.0.0.1 --port 9000 --userId alice
+```
+
+## 运行：CLI 客户端（方式B：`java -cp + 主类`）
 macOS/Linux：
 ```bash
 java -cp "client-cli/target/classes:$(cat client-cli/target/classpath.txt)" \
@@ -121,7 +147,20 @@ CLI 命令：
 - `/send <text>`
 - `/bye`
 
-## 运行：JavaFX 客户端（不用 Maven）
+## 运行：JavaFX 客户端（方式A：`java -jar`）
+说明：构建后会生成可执行 jar `client-fx/target/client-fx-1.0-SNAPSHOT.jar`，运行依赖放在 `client-fx/target/lib/`。
+
+macOS/Linux：
+```bash
+java -jar client-fx/target/client-fx-1.0-SNAPSHOT.jar
+```
+
+Windows（java.exe）：
+```bat
+java.exe -jar client-fx\\target\\client-fx-1.0-SNAPSHOT.jar
+```
+
+## 运行：JavaFX 客户端（方式B：`java -cp + 主类`）
 macOS/Linux：
 ```bash
 java -cp "client-fx/target/classes:$(cat client-fx/target/classpath.txt)" \
@@ -136,7 +175,24 @@ java.exe -cp "client-fx\\target\\classes;@client-fx\\target\\classpath.txt" ^
 
 在 UI 中填写：Host/Port/User/MetricsPort，然后 Connect。
 
-## 运行：loadgen（压测，不用 Maven）
+## 运行：loadgen（方式A：`java -jar`）
+说明：`tools` 会生成两个可执行 jar：
+- `tools/target/tools-1.0-SNAPSHOT.jar`（LoadGen）
+- `tools/target/tools-1.0-SNAPSHOT-fault-inject.jar`（FaultInject）
+
+macOS/Linux：
+```bash
+java -jar tools/target/tools-1.0-SNAPSHOT.jar \
+  --host 127.0.0.1 --port 9000 --clients 200 --msgRate 2000 --durationSec 30 --payloadSize 128
+```
+
+Windows（java.exe）：
+```bat
+java.exe -jar tools\\target\\tools-1.0-SNAPSHOT.jar ^
+  --host 127.0.0.1 --port 9000 --clients 200 --msgRate 2000 --durationSec 30 --payloadSize 128
+```
+
+## 运行：loadgen（方式B：`java -cp + 主类`）
 macOS/Linux：
 ```bash
 java -cp "tools/target/classes:$(cat tools/target/classpath.txt)" \
@@ -156,7 +212,30 @@ java.exe -cp "tools\\target\\classes;@tools\\target\\classpath.txt" ^
 - `recv`：接收到的 BROADCAST 数
 - `p50/p95/p99`：端到端延迟（从 sendTs 到接收时刻）
 
-## 运行：fault-inject（故障注入，不用 Maven）
+## 运行：fault-inject（方式A：`java -jar`）
+macOS/Linux：
+```bash
+# 全部注入
+java -jar tools/target/tools-1.0-SNAPSHOT-fault-inject.jar \
+  --host 127.0.0.1 --port 9000 --case all
+
+# 指定单项
+java -jar tools/target/tools-1.0-SNAPSHOT-fault-inject.jar \
+  --host 127.0.0.1 --port 9000 --case unknown_type
+```
+
+Windows（java.exe）：
+```bat
+REM 全部注入
+java.exe -jar tools\\target\\tools-1.0-SNAPSHOT-fault-inject.jar ^
+  --host 127.0.0.1 --port 9000 --case all
+
+REM 指定单项
+java.exe -jar tools\\target\\tools-1.0-SNAPSHOT-fault-inject.jar ^
+  --host 127.0.0.1 --port 9000 --case unknown_type
+```
+
+## 运行：fault-inject（方式B：`java -cp + 主类`）
 macOS/Linux：
 ```bash
 # 全部注入
@@ -195,14 +274,11 @@ java.exe -cp "tools\\target\\classes;@tools\\target\\classpath.txt" ^
 ### A. naive 模式（翻车复现）
 1) 启动 server：
 ```bash
-java -cp "server/target/classes:$(cat server/target/classpath.txt)" \
-  com.example.chatroom.server.ServerMain \
-  --port 9000 --mode naive
+java -jar server/target/server-1.0-SNAPSHOT.jar --port 9000 --mode naive
 ```
 2) 运行高压 loadgen：
 ```bash
-java -cp "tools/target/classes:$(cat tools/target/classpath.txt)" \
-  com.example.chatroom.tools.LoadGenMain \
+java -jar tools/target/tools-1.0-SNAPSHOT.jar \
   --host 127.0.0.1 --port 9000 --clients 300 --msgRate 4000 --durationSec 40 --payloadSize 256
 ```
 3) 观察指标：
@@ -213,8 +289,7 @@ java -cp "tools/target/classes:$(cat tools/target/classpath.txt)" \
 ### B. backpressure 模式（改进对比）
 1) 启动 server：
 ```bash
-java -cp "server/target/classes:$(cat server/target/classpath.txt)" \
-  com.example.chatroom.server.ServerMain \
+java -jar server/target/server-1.0-SNAPSHOT.jar \
   --port 9000 --mode backpressure --backpressureUnwritableThreshold 3
 ```
 2) 使用相同 loadgen 参数

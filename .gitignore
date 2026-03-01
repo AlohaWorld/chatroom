@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Maven / Java build outputs
+target/
+**/target/
+bin/
+out/
+*.class
+
+# Runtime files
+*.log
+*.tmp
+hs_err_pid*
+replay_pid*
+
+# Backup artifacts
+backup/

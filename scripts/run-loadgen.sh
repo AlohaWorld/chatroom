@@ -16,15 +16,16 @@
 #
 # 说明：
 # - 先构建：mvn -q -DskipTests package
-# - 运行时依赖从 tools/target/classpath.txt 读取
+# - 构建后会生成可执行 jar（tools/target/tools-*.jar）
+# - 运行依赖会复制到 tools/target/lib
 
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-CLASSPATH_FILE="$PROJECT_ROOT/tools/target/classpath.txt"
-CLASSES_DIR="$PROJECT_ROOT/tools/target/classes"
+JAR_FILE=$(find "$PROJECT_ROOT/tools/target" -maxdepth 1 -type f -name 'tools-*.jar' ! -name '*fault-inject*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)
+LIB_DIR="$PROJECT_ROOT/tools/target/lib"
 
-if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CLASSPATH_FILE" ]; then
+if [ -z "${JAR_FILE:-}" ] || [ ! -d "$LIB_DIR" ]; then
   echo "[ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package" >&2
   exit 1
 fi
@@ -45,7 +46,7 @@ while [ $# -gt 0 ]; do
     --durationSec) DURATION="$2"; shift 2 ;;
     --payloadSize) PAYLOAD="$2"; shift 2 ;;
     -h|--help)
-      sed -n '1,80p' "$0" | sed 's/^# //;s/^#//'
+      sed -n '2,80p' "$0" | sed 's/^# //;s/^#//'
       exit 0
       ;;
     *)
@@ -55,10 +56,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-DEPS_CP=$(cat "$CLASSPATH_FILE")
-CP="$CLASSES_DIR:$DEPS_CP"
-
 JAVA_BIN=${JAVA_BIN:-java}
-exec "$JAVA_BIN" -cp "$CP" com.example.chatroom.tools.LoadGenMain \
+exec "$JAVA_BIN" -jar "$JAR_FILE" \
   --host "$HOST" --port "$PORT" --clients "$CLIENTS" --msgRate "$MSG_RATE" \
   --durationSec "$DURATION" --payloadSize "$PAYLOAD"

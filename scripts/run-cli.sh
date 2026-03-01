@@ -14,15 +14,16 @@
 #
 # 说明：
 # - 先构建：mvn -q -DskipTests package
-# - 运行时依赖从 client-cli/target/classpath.txt 读取
+# - 构建后会生成可执行 jar（client-cli/target/client-cli-*.jar）
+# - 运行依赖会复制到 client-cli/target/lib
 
 set -eu
 
 PROJECT_ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-CLASSPATH_FILE="$PROJECT_ROOT/client-cli/target/classpath.txt"
-CLASSES_DIR="$PROJECT_ROOT/client-cli/target/classes"
+JAR_FILE=$(find "$PROJECT_ROOT/client-cli/target" -maxdepth 1 -type f -name 'client-cli-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)
+LIB_DIR="$PROJECT_ROOT/client-cli/target/lib"
 
-if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CLASSPATH_FILE" ]; then
+if [ -z "${JAR_FILE:-}" ] || [ ! -d "$LIB_DIR" ]; then
   echo "[ERROR] 未找到构建产物，请先执行：mvn -q -DskipTests package" >&2
   exit 1
 fi
@@ -39,7 +40,7 @@ while [ $# -gt 0 ]; do
     --userId) USER_ID="$2"; shift 2 ;;
     --heartbeatIntervalSec) HEARTBEAT_INTERVAL="$2"; shift 2 ;;
     -h|--help)
-      sed -n '1,80p' "$0" | sed 's/^# //;s/^#//'
+      sed -n '2,80p' "$0" | sed 's/^# //;s/^#//'
       exit 0
       ;;
     *)
@@ -49,13 +50,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-DEPS_CP=$(cat "$CLASSPATH_FILE")
-CP="$CLASSES_DIR:$DEPS_CP"
-
 ARGS="--host $HOST --port $PORT --heartbeatIntervalSec $HEARTBEAT_INTERVAL"
 if [ -n "$USER_ID" ]; then
   ARGS="$ARGS --userId $USER_ID"
 fi
 
 JAVA_BIN=${JAVA_BIN:-java}
-exec "$JAVA_BIN" -cp "$CP" com.example.chatroom.client.cli.CliMain $ARGS
+exec "$JAVA_BIN" -jar "$JAR_FILE" $ARGS

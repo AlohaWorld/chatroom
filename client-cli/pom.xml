@@ -42,17 +42,30 @@
         <version>3.6.1</version>
         <executions>
           <execution>
-            <id>build-classpath</id>
+            <id>copy-runtime-dependencies</id>
             <phase>package</phase>
             <goals>
-              <goal>build-classpath</goal>
+              <goal>copy-dependencies</goal>
             </goals>
             <configuration>
-              <outputFile>${project.build.directory}/classpath.txt</outputFile>
+              <outputDirectory>${project.build.directory}/lib</outputDirectory>
               <includeScope>runtime</includeScope>
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.example.chatroom.client.cli.CliMain</mainClass>
+              <addClasspath>true</addClasspath>
+              <classpathPrefix>lib/</classpathPrefix>
+            </manifest>
+          </archive>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
