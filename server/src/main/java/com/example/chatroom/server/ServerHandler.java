@@ -80,8 +80,9 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
                 case HEARTBEAT -> handleHeartbeat(ctx, msg);
                 case BYE -> handleBye(ctx, msg);
                 case PONG, LOGIN_ACK, BROADCAST, ERROR ->
-                        log.debug("client_sent_unexpected type={} channelId={}", type, ctx.channel().id().asShortText());
-                default -> safeSendError(ctx.channel(), "UNKNOWN_TYPE", "msgType_unknown", msg.getHeader().getTraceId());
+                    log.debug("client_sent_unexpected type={} channelId={}", type, ctx.channel().id().asShortText());
+                default ->
+                    safeSendError(ctx.channel(), "UNKNOWN_TYPE", "msgType_unknown", msg.getHeader().getTraceId());
             }
         } finally {
             MDC.clear();
@@ -166,6 +167,8 @@ public class ServerHandler extends SimpleChannelInboundHandler<Message> {
             if (channel == null || !channel.isActive()) {
                 continue;
             }
+            // ChatServer启动时有naive和backpressure两种mode，naive中无背压处理
+            // backpressure中有限流处理
             if (config.getMode() == ServerConfig.Mode.BACKPRESSURE) {
                 if (!channel.isWritable()) {
                     int streak = getIntAttr(channel, UNWRITABLE_STREAK);
